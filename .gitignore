@@ -1,0 +1,8 @@
+.pio/
+__pycache__/
+*.pyc
+*.so
+*.zip
+*.tar.gz
+boot_backup_*/
+.*.pending

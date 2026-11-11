@@ -1,0 +1,9 @@
+{
+  "status": "publication candidate",
+  "esp32_build": "PASS: espressif32 6.5.0, Arduino 2.0.14, esp32-s3-devkitc-1",
+  "offline_demo": "PASS: 1288x514, full 64-group PWM, no hardware access",
+  "protocol_tests": "PASS: 2560 ROW pulses, correct 12/4 widths, one-hot selector and final reset",
+  "publication_checks": "PASS: Python syntax, README links, viewport, privacy markers, LF endings",
+  "hardware_retest": "PENDING for the new standalone Pi demo; original hardware results documented separately",
+  "license": "Original additions: owner selection pending. Upstream MIT notice preserved."
+}

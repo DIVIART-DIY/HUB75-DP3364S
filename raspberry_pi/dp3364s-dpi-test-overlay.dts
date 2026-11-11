@@ -1,0 +1,67 @@
+// Standalone experimental overlay; no includes or standard DPI overlay needed.
+// Derived from Raspberry Pi Linux vc4-kms-dpi.dtsi / generic overlay topology.
+// Activate ONLY on a separate test system, HUB75 cables disconnected.
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2835";
+    fragment@0 {
+        target = <&gpio>;
+        __overlay__ {
+            dp_test_pins: dp-test-pins {
+                // Port 1 only. Leave I2C GPIO2/3 and DHT GPIO26 untouched.
+                // Native DPI clock/sync GPIO0..3 are NOT routed.
+                brcm,pins = <4 7 8 9 10 11 15 17 18 22 24 25 27>;
+                brcm,function = <6>; // BCM2835 ALT2 = DPI (not ALT6).
+                brcm,pull = <0>;
+            };
+            dp_blank_boot: dp-blank-boot {
+                pins = "gpio23";
+                function = "gpio_out";
+                bias-pull-up;
+                output-high; // B=/enable: row switches OFF until valid DMA.
+            };
+        };
+    };
+    fragment@1 {
+        target-path = "/";
+        __overlay__ {
+            dp_test_panel: dp-test-panel {
+                compatible = "panel-dpi";
+                width-mm = <320>;
+                height-mm = <160>;
+                bus-format = <0x100a>; // MEDIA_BUS_FMT_RGB888_1X24
+                panel-timing {
+                    clock-frequency = <16000000>;
+                    hactive = <1920>;
+                    hfront-porch = <0>;
+                    hsync-len = <0>;
+                    hback-porch = <0>;
+                    vactive = <128>;
+                    vfront-porch = <0>;
+                    vsync-len = <0>;
+                    vback-porch = <0>;
+                    hsync-active = <1>;
+                    vsync-active = <1>;
+                    de-active = <1>;
+                    pixelclk-active = <1>;
+                };
+                port {
+                    dp_test_in: endpoint { remote-endpoint = <&dp_test_out>; };
+                };
+            };
+        };
+    };
+    fragment@2 {
+        target = <&dpi>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-names = "default";
+            pinctrl-0 = <&dp_test_pins &dp_blank_boot>;
+            port {
+                dp_test_out: endpoint { remote-endpoint = <&dp_test_in>; };
+            };
+        };
+    };
+};
