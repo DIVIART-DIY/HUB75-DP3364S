@@ -1,9 +1,9 @@
 {
   ".gitattributes": "a7c870e64b83b3a4b91ca131cefe6e951c8d0f687c750730f114af7065b29e7a",
   ".gitignore": "14fb0b74dcca40207fea0730544bc5315292599cc3f6b0a76f6d47e1fce82a0e",
-  "README.md": "bf36df511750a49aa470f848e1010988acbdf210e48cf76fcfa403bd063448ca",
+  "README.md": "1f79ff32a0f6f956a09bf2252c9bba529d49109a7437ed3ff92ff86c66384802",
   "THIRD_PARTY_NOTICES.md": "cf2cedff5a791131bf1c20110b2fc142bc6d762b2ae1cbb2c2709e82e32d118d",
-  "docs/BUILD_REPORT.json": "9d2bf4fbd8e274389f62dc9d4540b90e6ecf3bad6bddda0c4b73371089ece9dc",
+  "docs/BUILD_REPORT.json": "a5f05e084723588e668c5368436a67ddf6b9929deae8b02a6c506eb1281c73a4",
   "docs/PROTOCOL.md": "5a5d91594675bdd7b7145ed3e0888e06388542160e1758eb10b0dd5065d0ab22",
   "docs/VALIDATION.md": "c171344abb22e9380591d9423c73f1a2993c33252e9e2554bcd3a0a25dceb5fa",
   "esp32s3/platformio.ini": "9e81534983e565e296c14a14fe93a834e490dbcc5c1cb1d44d75b7b3b8f1b66b",
@@ -22,5 +22,6 @@
   "esp32s3/src/lcd_dma.cpp": "4a9c2522083e3715eeb815ee7a89e9fe3706ac15ecf0b0c868b734c234e4e010",
   "esp32s3/src/lcd_dma.h": "d7b4dd2ef9abb3e8c7fa86c053ffe602e4ecbb32f76d49b4386842ab2b45e269",
   "esp32s3/src/main.cpp": "c48e22cc86f00bb179581df2c408312a556b8917c306c8133f1d34740fbb64e5",
-  "esp32s3/src/motion_pattern.h": "70bfd2da0c1e8ce397ad00425155c8539db08e3106e023a00b20746d1d712daa"
+  "esp32s3/src/motion_pattern.h": "70bfd2da0c1e8ce397ad00425155c8539db08e3106e023a00b20746d1d712daa",
+  "LICENSE": "ebf66cce7f8cbe16b85c2a52b263c6bfa879a2054f90f31b75a92c7517211334"
 }

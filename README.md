@@ -198,8 +198,7 @@ Its MIT notice is retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 That project's panel and host are different; its settings must not be assumed
 interchangeable with this 160 x 80 / RUL5158E profile.
 
-A project-wide license for original additions has **not yet been selected**.
-Choose it before public release; the included upstream notice is not a license
-grant for every original file here. Hardware acceptance of the newly packaged
-Pi demo is also pending. No private configuration, keys or backup images belong
-in this repository.
+Original contributions are licensed under the [MIT License](LICENSE).
+Copyright (c) 2026 DIVIART. Upstream copyright and license notices are retained
+in THIRD_PARTY_NOTICES.md. Hardware acceptance of the newly packaged Pi demo
+is still pending. No private configuration, keys or backup images belong here.

@@ -5,5 +5,5 @@
   "protocol_tests": "PASS: 2560 ROW pulses, correct 12/4 widths, one-hot selector and final reset",
   "publication_checks": "PASS: Python syntax, README links, viewport, privacy markers, LF endings",
   "hardware_retest": "PENDING for the new standalone Pi demo; original hardware results documented separately",
-  "license": "Original additions: owner selection pending. Upstream MIT notice preserved."
+  "license": "MIT; Copyright (c) 2026 DIVIART. Upstream notices preserved."
 }
