@@ -50,7 +50,7 @@ def main():
         for flag in flags:
             if flag not in cmd.split():
                 cmd += ' ' + flag
-        config.write_text(cfg.rstrip() + '\n\n[all]\n# Isolated DPI transport test on SD clone\ndtparam=i2c_arm=on\ngpio=23=op,dh\ndtoverlay=dp3364s-dpi-test\n')
+        config.write_text(cfg.rstrip() + '\n\n[all]\n# Isolated DPI transport test on SD clone\ndtparam=i2c_arm=on\ndtoverlay=dp3364s-dpi-test\n')
         cmdline.write_text(cmd + '\n')
     print('Prepared TEST boot. Application files and running services unchanged.')
     print('Original boot files:', backup)

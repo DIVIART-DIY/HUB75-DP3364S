@@ -1,4 +1,10 @@
-"""DP3364S register, scan-word and GPIO primitives. Use demo.py to run tests."""
+"""Experimental FULL BLUE DP3364S / RUL5158E driver, separate from clock code.
+
+Default: generate and decode the frame in memory, NO hardware access.
+--run --test-boot --dp3364s-connected is exclusively for the verified DP3364S
+panel on Bonnet Port 1, never FM6363C. Output uses hardware DPI with bounded
+blanking pauses; flicker-free operation is not yet verified on the panel.
+"""
 import argparse
 import json
 import mmap
@@ -8,7 +14,7 @@ import struct
 import subprocess
 from collections import Counter
 import dpi_transport as transport
-from protocol_reference import REGISTERS, blue_frame
+from probe import REGISTERS, blue_frame
 
 PINS = transport.PINS
 B, A, C = (transport.bit(n) for n in ('B', 'A', 'C'))
@@ -66,13 +72,10 @@ def clear_words():
     return [w for _ in range(40) for w in (B, B | A, B)]
 
 
-def scan_word(p, painter=None, mux_blank=3, scan_delay=0):
-    scan = p - scan_delay
-    phase, row = scan % 128, (scan // 128) % 40
-    mux = (C if row == 0 else 0) | (B if phase < mux_blank else 0) | (A if phase == 1 else 0)
-    word = mux | (ROW if mux_blank <= phase < mux_blank + (12 if scan < 128 else 4) else 0)
-    if scan < 0:
-        mux = word = B  # Hold the cleared selector until the delayed scan starts.
+def scan_word(p, painter=None):
+    phase, row = p % 128, (p // 128) % 40
+    mux = (C if row == 0 else 0) | (B if phase < 3 else 0) | (A if phase == 1 else 0)
+    word = mux | (ROW if 3 <= phase < 3 + (12 if p < 128 else 4) else 0)
     if p < 102400:
         latch, i = divmod(p, 160)
         y, x = latch // 16, (i // 16) * 16 + latch % 16
@@ -88,12 +91,7 @@ def scan_word(p, painter=None, mux_blank=3, scan_delay=0):
     return word, mux
 
 
-def build_words(colour='blue', pattern='solid', mux_blank=3, scan_delay=0,
-                full_pwm_cycle=False):
-    if mux_blank not in (3, 8):
-        raise ValueError('Supported mux blanking: 3 or 8 clocks')
-    if scan_delay not in (0, 16):
-        raise ValueError('Supported scan delays: 0 or 16 clocks')
+def build_words(colour='blue', pattern='solid'):
     painter = (lambda x, y: expected_pixel(x, y, colour, pattern)) if pattern != 'solid' else None
     # Header fits one whole scanline: blank/clear, idle, then VSYNC.
     lines = [clear_words() + [B]*504 + [B | LAT]*3 + [B]*17]
@@ -102,20 +100,18 @@ def build_words(colour='blue', pattern='solid', mux_blank=3, scan_delay=0,
     for block in range(160):
         words = []
         for p in range(block*640, (block+1)*640):
-            word, mux = scan_word(p, painter, mux_blank, scan_delay)
+            word, mux = scan_word(p, painter)
             words.append(word)
             if (p+1) % 160 == 0:
                 words.append(mux | LAT)
         lines.append(words)
     # Preserve the confirmed 12800 scan-clock tail; fill the unused 4 slots.
-    tail_lines = 352 if full_pwm_cycle else 20
-    for block in range(tail_lines):
+    for block in range(20):
         first = 102400 + block*640
-        lines.append([scan_word(p, mux_blank=mux_blank, scan_delay=scan_delay)[0]
-                      for p in range(first, first+640)] + [B]*4)
+        lines.append([scan_word(p)[0] for p in range(first, first+640)] + [B]*4)
     # Clear ALL row tokens before vertical blanking forces DPI data to zero.
     lines.append(clear_words() + [B]*524)
-    if len(lines) != (514 if full_pwm_cycle else HEIGHT) or any(len(line) != WORDS_PER_LINE for line in lines):
+    if len(lines) != HEIGHT or any(len(line) != WORDS_PER_LINE for line in lines):
         raise RuntimeError('DPI scanline geometry')
     return ([[colour_word(w, colour) for w in line] for line in lines]
             if colour != 'blue' and pattern == 'solid' else lines)
@@ -188,7 +184,7 @@ def validate(lines, colour='blue', pattern='solid'):
 
 
 def pixels(lines):
-    result = bytearray(sum(len(line) for line in lines)*8)
+    result = bytearray(WIDTH*HEIGHT*4)
     clock = transport.bit('CLK')
     offset = 0
     for line in lines:
@@ -235,23 +231,7 @@ def clear_mux(gpio):
             gpio.write(state)
 
 
-def register_profile(remove_bad_spots=False):
-    # DP3364S Rev1.0 EN, section 10.9: REG0C bit 1 enables removal
-    # of open-circuit bad-spot crosses. Preserve every other register bit.
-    return tuple(reg | 2 if remove_bad_spots and reg >> 8 == 0x0c else reg
-                 for reg in REGISTERS)
-
-
-def hold_row_disabled():
-    subprocess.run(['pinctrl', 'set', str(PINS['B']), 'op', 'dh'], check=True)
-
-
-def release_row_to_dma():
-    subprocess.run(['pinctrl', 'set', str(PINS['B']), 'a2'], check=True)
-    print('Row switches released to verified black DMA frame', flush=True)
-
-
-def initialise(remove_bad_spots=False, hold_blank=False):
+def initialise():
     pin_output()
     try:
         with GPIO() as gpio:
@@ -264,7 +244,7 @@ def initialise(remove_bad_spots=False, hold_blank=False):
             # Same SDR / VSYNC / PRE_ACT / WR_CFG as src/main.cpp.
             clocks(lat, 15)
             clocks(0, 1)
-            for reg in register_profile(remove_bad_spots):
+            for reg in REGISTERS:
                 clocks(lat, 3)
                 clocks(0, 17)
                 clocks(lat, 14)
@@ -279,24 +259,19 @@ def initialise(remove_bad_spots=False, hold_blank=False):
             gpio.write(blank)
     finally:
         for pin in PINS.values():
-            if hold_blank and pin == PINS['B']:
-                continue
             subprocess.run(['pinctrl', 'set', str(pin), 'a2'], check=True)
     print('DP3364S initialised; row tokens cleared; GPIO returned to DPI', flush=True)
 
 
-def blank_after_stop(hold_blank=False):
+def blank_after_stop():
     pin_output()
     with GPIO() as gpio:
         clear_mux(gpio)
         gpio.write(1 << PINS['B'])
-    # Production stop: park ALL panel pins as static GPIO. Returning data,
-    # CLK/LAT/ROW to an inactive DPI peripheral can expose shutdown transitions.
-    if not hold_blank:
-        for pin in PINS.values():
-            subprocess.run(['pinctrl', 'set', str(pin), 'a2'], check=True)
-    print('Output stopped; all row tokens cleared; ' +
-          ('panel pins parked as GPIO' if hold_blank else 'pins returned to DPI'), flush=True)
+    # All row tokens are zero before returning to the disabled DPI function.
+    for pin in PINS.values():
+        subprocess.run(['pinctrl', 'set', str(pin), 'a2'], check=True)
+    print('Output stopped; all row tokens cleared', flush=True)
 
 
 def main():

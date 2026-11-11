@@ -1,0 +1,52 @@
+{
+  "dp3364s_blue.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "b8daef10263331f75831c107575272e41553db393b3ded138cd3c4c7e76fa2f1",
+    "published_sha256": "b8daef10263331f75831c107575272e41553db393b3ded138cd3c4c7e76fa2f1"
+  },
+  "dp3364s_motion.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "8d8fbda10c6b5589495881d84ebb3f448773c18786a2f019d8d61aca1e252d56",
+    "published_sha256": "49af064b663e73437cee61723027e4f7b1ea8f1a0e0495f87f4ebfbd4bfdbcf8"
+  },
+  "dpi_transport.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "73d308135f579a54de67016031e21ceb084e8bf0da254d1c998436146b6a829d",
+    "published_sha256": "cc5e986f3d8d24bf9b48403b0784126322c4f6e223f1f9dd5bd440e26c7817cc"
+  },
+  "drm_presenter.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "a74a4b87e589b99e198089ea5d777a7290bf71ab3bfdf08eed2c5239f1dd77fe",
+    "published_sha256": "a74a4b87e589b99e198089ea5d777a7290bf71ab3bfdf08eed2c5239f1dd77fe"
+  },
+  "panel_frame.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "c07a243e1a3ba3d256a5eeb9e1dd48fb2436d3e5685010fcef04394d02aa8a7e",
+    "published_sha256": "c07a243e1a3ba3d256a5eeb9e1dd48fb2436d3e5685010fcef04394d02aa8a7e"
+  },
+  "probe.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "06cdc4049c9faa91d8da110e70aeebea87c79458d144cb0caf422fe299e7bce3",
+    "published_sha256": "22fb4c588a4b8fa8d940d4a96d6f024dad9e2aabd241c20dcdc1e46ff4033f6f"
+  },
+  "dp3364s-dpi-test-overlay.dts": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "9d534ce2b395c8c0ad411a3a247b6b6b5d969d4def371de45c4ace5d83119f74",
+    "published_sha256": "9d534ce2b395c8c0ad411a3a247b6b6b5d969d4def371de45c4ace5d83119f74"
+  },
+  "test_blue_frame.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "4ad1fd090c9b7db683305457d76d484af90916cb655a6fd9692a257b24699caf",
+    "published_sha256": "4ad1fd090c9b7db683305457d76d484af90916cb655a6fd9692a257b24699caf"
+  },
+  "test_motion.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "ed08683bfebd257722f54db6d2c8a2e65d58b5d4bd585a695112b6fd3d2103d2",
+    "published_sha256": "ed08683bfebd257722f54db6d2c8a2e65d58b5d4bd585a695112b6fd3d2103d2"
+  },
+  "test_dpi_checks.py": {
+    "checkpoint": "pi_motion_confirmed_20261107",
+    "original_sha256": "b15cb9d8febf0b441a4a77ce52cec85248ef88d27a62049be568dea9578d486e",
+    "published_sha256": "b15cb9d8febf0b441a4a77ce52cec85248ef88d27a62049be568dea9578d486e"
+  }
+}

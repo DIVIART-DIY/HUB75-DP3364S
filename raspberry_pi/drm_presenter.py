@@ -72,9 +72,8 @@ class Presenter:
         self.lib = self.fd = self.mapping = None
         self.fb, self.dumb = drm.U32(), drm.CreateDumb()
 
-    def prepare(self, lib, fd, crtc, initial_fb, initial_mapping, initial_pitch):
+    def run(self, lib, fd, crtc, initial_fb, initial_mapping, initial_pitch, seconds):
         self.lib, self.fd = lib, fd
-        self.crtc = crtc
         page_flip = lib.drmModePageFlip
         page_flip.restype = C.c_int
         page_flip.argtypes = [C.c_int, drm.U32, drm.U32, drm.U32, C.c_void_p]
@@ -86,38 +85,29 @@ class Presenter:
                                  flags=mmap.MAP_SHARED, prot=mmap.PROT_READ | mmap.PROT_WRITE)
         drm.ok(lib.drmModeAddFB(fd, drm.WIDTH, drm.HEIGHT, 24, 32, self.dumb.pitch,
                                self.dumb.handle, C.byref(self.fb)), 'Add second framebuffer')
-        self.buffers = [(initial_fb, initial_mapping, initial_pitch),
+        buffers = [(initial_fb, initial_mapping, initial_pitch),
                    (self.fb.value, self.mapping, self.dumb.pitch)]
-        self.active, self.completed = 0, 0
-
-    def present(self, frame):
-        row_bytes = drm.WIDTH*4
-        if len(frame) != row_bytes*drm.HEIGHT:
-            raise ValueError('Incorrect frame size')
-        other = 1-self.active
-        framebuffer, memory, pitch = self.buffers[other]
-        for y in range(drm.HEIGHT):
-            memory[y*pitch:y*pitch+row_bytes] = frame[y*row_bytes:(y+1)*row_bytes]
-        cookie = self.completed+1
-        drm.ok(self.lib.drmModePageFlip(self.fd, self.crtc, framebuffer, 1,
-                                       C.c_void_p(cookie)), 'Queue page flip')
-        event = wait_flip(self.fd)
-        if event[0] != cookie:
-            raise RuntimeError('Unexpected page flip event cookie')
-        self.active, self.completed = other, self.completed+1
-
-    def run(self, lib, fd, crtc, initial_fb, initial_mapping, initial_pitch, seconds):
-        self.prepare(lib, fd, crtc, initial_fb, initial_mapping, initial_pitch)
-        completed = 0
+        active, completed = 0, 0
         start, next_log = time.monotonic(), time.monotonic()+5
+        row_bytes = drm.WIDTH*4
         while time.monotonic()-start < seconds:
             frame = self.frames[(completed+1) % len(self.frames)]
+            other = 1-active
+            framebuffer, memory, pitch = buffers[other]
+            # Only the inactive buffer is written, after the previous flip ack.
+            for y in range(drm.HEIGHT):
+                memory[y*pitch:y*pitch+row_bytes] = frame[y*row_bytes:(y+1)*row_bytes]
             due = start+(completed+1)/self.fps
             delay = due-time.monotonic()
             if delay > 0:
                 time.sleep(delay)
-            self.present(frame)
-            completed = self.completed
+            cookie = completed+1
+            drm.ok(page_flip(fd, crtc, framebuffer, 1, C.c_void_p(cookie)), 'Queue page flip')
+            event = wait_flip(fd)
+            if event[0] != cookie:
+                raise RuntimeError('Unexpected page flip event cookie')
+            active = other  # old active buffer is now safe to overwrite
+            completed += 1
             if time.monotonic() >= next_log:
                 print('Motion: %d flips acknowledged, %.2f updates/s' %
                       (completed, completed/(time.monotonic()-start)), flush=True)

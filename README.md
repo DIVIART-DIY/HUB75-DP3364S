@@ -10,11 +10,17 @@ HUB75 describes the connector; it does not identify the panel protocol.
 
 ## Status
 
-The original hardware tests produced stable images without visible flicker
-on the tested setups. The final Pi implementation also removed the observed
-parasitic scan rows. The ESP32 version retains documented faint-background
-limitations. This repository is a **publication candidate**: the newly separated
-Pi demo still needs a hardware rerun. See [validation](docs/VALIDATION.md).
+The ESP32-S3 and Raspberry Pi standalone colour, geometry, gradient and motion
+tests were visually checked on the original panel. The Pi standalone files
+come from the saved successful 2026-11-07 motion checkpoint, not a new demo.
+Timing, pixel encoding and motion generation in that checkpoint are preserved.
+Personal paths/comments and an unrelated application-service guard were removed.
+Source hashes are recorded in [provenance](docs/SOURCE_PROVENANCE.json).
+
+The later full-PWM Pi primitives are kept separately in
+`raspberry_pi/full_pwm_reference`: these document the solution to parasitic
+rows found later. They are not silently substituted into the standalone motion
+test. See [validation](docs/VALIDATION.md) and [protocol](docs/PROTOCOL.md).
 
 ## Tested hardware
 
@@ -116,52 +122,51 @@ Copy this repository to the Pi, then in its directory:
 
 ```
 sudo apt update
-sudo apt install build-essential device-tree-compiler libdrm2
+sudo apt install device-tree-compiler libdrm2
 cd raspberry_pi
-gcc -O3 -shared -fPIC panel_encode.c -o libpanel_encode.so
-python3 -B demo.py
+python3 -B dp3364s_blue.py
 ```
 
-The last command performs offline encoding checks and does **not** enable GPIO.
-Prepare the custom overlay (backs up config.txt/cmdline.txt beside the script):
+The last command checks encoding in memory without enabling hardware.
+Prepare the custom overlay on a dedicated test OS (HUB75 disconnected):
 
 ```
 sudo python3 -B prepare_test_boot.py --apply
 sudo reboot
 ```
 
-The preparation masks the display manager on the test boot, disables DRM fbdev
-emulation, enables I2C and holds B=/enable high. It does not stop arbitrary
-matrix services: use a dedicated OS with no other panel driver running.
-Do not run this on an existing installation without understanding those changes.
-
-After reboot, shut down, remove power, connect **Port 1 to panel IN**, and power
-up with the separate panel supply and common ground. From `raspberry_pi`:
+The script backs up config.txt and cmdline.txt, enables I2C, masks the display
+manager and disables DRM fbdev emulation. It does not stop other matrix drivers.
+After reboot, shut down, remove power, connect **Port 1 to panel IN**, then power
+up with separate panel power and common ground. From `raspberry_pi`:
 
 ```
-sudo python3 -B demo.py --run --test-boot --dp3364s-connected --colour blue
+sudo python3 -B dp3364s_blue.py --run --test-boot --dp3364s-connected --colour blue
 ```
 
-Run each colour separately by replacing `blue` with `red`, `green`, `white`,
-`yellow`, `cyan`, `magenta`, then `black`. Default duration is 30 seconds.
+Repeat for `red`, `green`, `white`, `yellow`, `cyan`, `magenta`, then `black`.
 
 ```
-sudo python3 -B demo.py --run --test-boot --dp3364s-connected --pattern geometry
-sudo python3 -B demo.py --run --test-boot --dp3364s-connected --pattern gradients
-sudo python3 -B demo.py --run --test-boot --dp3364s-connected --pattern motion --seconds 60
+sudo python3 -B dp3364s_blue.py --run --test-boot --dp3364s-connected --pattern geometry
+sudo python3 -B dp3364s_blue.py --run --test-boot --dp3364s-connected --pattern gradients
+sudo python3 -B dp3364s_motion.py --run --test-boot --dp3364s-connected --seconds 60
 ```
 
-Use `demo.py`, not the older helper modules' diagnostic CLIs. The demo always
-selects the full 64-group PWM cycle and caps native channel codes at 0x0999.
-Left, top and bottom edges are dark; the right edge remains usable.
-The motion line intentionally starts at y=2 and ends at y=77.
-Ctrl+C requests black scanning and orderly output cleanup.
-If the test refuses an already-active CRTC, stop the competing display owner;
-if an interrupted prior run left the CRTC active, reboot the dedicated test OS.
+Motion prepares and caches 314 frames. The confirmed snapshot uses LEVEL=0x0400,
+DPI 1288 x 182 at a requested 16 MHz pixel clock, about 66.99 Hz scanout and
+33.50 acknowledged motion updates/s. The line/text step is one pixel per frame.
+All four outer edges are dark in this standalone checkpoint.
 
-Restore boot configuration by copying **both** saved boot files from the printed
-`boot_backup_*` directory to `/boot/firmware`, then reboot with HUB75 disconnected.
-Do not overwrite the backup directory by running preparation twice.
+The later full-PWM reference uses DPI 1288 x 514, about 23.97 Hz and a native
+maximum code of 0x0999. Its encoder leaves the right edge available. These are
+different saved stages; do not mix their geometry, encoders or overlays blindly.
+There is no new standalone runner requiring the original tester to reopen a
+working device. The original hardware tests are complete.
+
+Ctrl+C stops the standalone test. These early test scripts do not include the
+later production black-frame shutdown sequence. For an interrupted CRTC, reboot
+the dedicated test OS instead of forcing takeover. Restore boot configuration
+by restoring both backed-up boot files, then reboot with HUB75 disconnected.
 
 ## What to look for
 
@@ -172,7 +177,7 @@ Do not overwrite the backup directory by running preparation twice.
 | Geometry | Thin white frame; red/green top corners, blue/white bottom corners; centered cyan cross |
 | Gradients | Four bands: gray, red, green, blue; 16 increasing levels without reversals |
 | Motion | White line and `HUB75 DMA` text; no tearing at the half-panel boundary |
-| Stop/restart | Black scan before output stops; no leftover selected rows |
+| Stop/restart | Early scripts stop output; later reference documents black-scan cleanup |
 
 ## Troubleshooting
 
@@ -186,8 +191,8 @@ Do not overwrite the backup directory by running preparation twice.
 | Motion beats or double images | Advance on acknowledged flips; do not derive position from a separate timer |
 | Only 50 Hz noise on a scope | This does not confirm DCLK; verify the actual pin and short probe ground |
 
-Requested active DCLK is **8 MHz**; nominal full-cycle Pi refresh is **about
-23.97 Hz**. They are different quantities. Electrical CLK frequency was not
+Requested active DCLK is **8 MHz**; standalone scanout is about **66.99 Hz**,
+while the later full-cycle reference refresh is about **23.97 Hz**. They are different quantities. Electrical CLK frequency was not
 independently measured. See [protocol details](docs/PROTOCOL.md).
 
 ## Source credits and release preparation
@@ -200,5 +205,4 @@ interchangeable with this 160 x 80 / RUL5158E profile.
 
 Original contributions are licensed under the [MIT License](LICENSE).
 Copyright (c) 2026 DIVIART. Upstream copyright and license notices are retained
-in THIRD_PARTY_NOTICES.md. Hardware acceptance of the newly packaged Pi demo
-is still pending. No private configuration, keys or backup images belong here.
+in THIRD_PARTY_NOTICES.md. The saved hardware test results are documented in VALIDATION.md. No private configuration, keys or backup images belong here.

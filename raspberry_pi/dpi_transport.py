@@ -1,7 +1,7 @@
 """DPI transport experiment, NOT a DP3364S display driver.
 
 Default: in-memory self-test only. --run requires an isolated test boot,
-inactive HUB75 demo service and ALL Bonnet HUB75 cables disconnected.
+inactive standalone panel application service and ALL Bonnet HUB75 cables disconnected.
 No GPIO library, application imports, boot edits or service control.
 """
 import argparse
@@ -197,8 +197,7 @@ def verify_frame_progress(lib, fd, crtc_id, mode, wait=time.sleep):
 
 
 def save_run_report(report):
-    target = Path(os.environ.get('DP3364S_RUN_REPORT',
-                                 '/tmp/hub75-dp3364s-dpi_run_latest.json'))
+    target = Path('/tmp/hub75-dp3364s-dpi_run_latest.json')
     target.write_text(json.dumps(report, indent=2))
     target.chmod(0o644)
     print('Run report saved: ' + str(target), flush=True)
@@ -216,22 +215,11 @@ def guard_configuration(args):
     model = Path('/proc/device-tree/model').read_bytes()
     if b'Raspberry Pi Zero 2 W' not in model:
         raise RuntimeError('This experiment is restricted to Raspberry Pi Zero 2 W')
-    # Dedicated test OS only: no competing display manager or matrix process.
-    state = subprocess.run(['systemctl','is-active','display-manager.service'],
-                           capture_output=True,text=True).stdout.strip()
-    if state in ('active','activating'):
-        raise RuntimeError('Stop the display manager before running the demo')
+    # Use a dedicated test OS with no competing panel driver.
     # Verify the booted overlay and all its claimed pins, not just a CLI promise.
     root = Path('/proc/device-tree')
     actual = (root / 'soc/gpio@7e200000/dp-test-pins/brcm,pins').read_bytes()
     pins = set(struct.unpack('>' + 'I' * (len(actual) // 4), actual))
-    boot_blank = root/'soc/gpio@7e200000/dp-blank-boot'
-    if boot_blank.is_dir():
-        if ((boot_blank/'pins').read_bytes() != b'gpio23\0' or
-                (boot_blank/'function').read_bytes() != b'gpio_out\0' or
-                not (boot_blank/'output-high').exists()):
-            raise RuntimeError('Unexpected boot blanking pin configuration')
-        pins.add(PINS['B'])
     if pins != set(PINS.values()):
         raise RuntimeError('Unexpected overlay pin set; sensors must remain excluded')
     for name, gpio in PINS.items():
@@ -242,20 +230,14 @@ def guard_configuration(args):
     import re
     modes = dict((int(gpio), mode) for gpio, mode in
                  re.findall(r'^\s*(\d+):\s+(\w+)', functions, re.M))
-    b_is_held = bool(re.search(r'^\s*23:\s+op\s+.*\|\s+hi\b', functions, re.M))
-    parked = b_is_held and all(
-        re.search(r'^\s*%d:\s+op\s+.*\|\s+lo\b' % gpio, functions, re.M)
-        for gpio in set(PINS.values())-{PINS['B']})
-    if not parked and any(modes.get(gpio) != 'a2' and not (gpio == PINS['B'] and b_is_held)
-           for gpio in PINS.values()):
+    if any(modes.get(gpio) != 'a2' for gpio in PINS.values()):
         raise RuntimeError('Port 1 pins must already be ALT2 from test overlay')
     if modes.get(2) != 'a0' or modes.get(3) != 'a0' or modes.get(26) == 'a2':
         raise RuntimeError('Sensor pin functions not preserved')
 
 
 def run(args, *, mode_override=None, frame_pixels=None, before_enable=None,
-        after_disable=None, safety_check=None, presenter=None,
-        after_enable=None, before_disable=None):
+        after_disable=None, safety_check=None, presenter=None):
     # Reject the known failing profile BEFORE opening DRM or touching outputs.
     mode = mode_override if mode_override is not None else timing_mode(args.timing)
     (safety_check or guard)(args)
@@ -333,8 +315,6 @@ def run(args, *, mode_override=None, frame_pixels=None, before_enable=None,
         report.update(verify_frame_progress(lib, fd, crtc_id, mode))
         print('DRM frames advancing: %.3f Hz; connector output remains unverified.' %
               report['drm_frame_hz'], flush=True)
-        if after_enable is not None:
-            after_enable()
         save_run_report(report)
         print('Physical output NOT confirmed. Measure CLK/B and check kernel log.', flush=True)
         if presenter is not None:
@@ -460,8 +440,6 @@ def run(args, *, mode_override=None, frame_pixels=None, before_enable=None,
             except Exception as exc:
                 cleanup_errors.append(str(exc))
         if changed:
-            if before_disable is not None:
-                cleanup(before_disable)
             # It was inactive before us. Disable scanout before freeing its buffer.
             cleanup(lambda: ok(lib.drmModeSetCrtc(fd, crtc_id, 0, 0, 0, None, 0, None),
                                'Disable test CRTC'))
